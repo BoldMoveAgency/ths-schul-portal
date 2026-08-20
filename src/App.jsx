@@ -22,23 +22,30 @@ class ErrorBoundary extends Component {
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import {
   Archive,
+  Award,
   Bell,
   BookOpen,
   Calculator,
+  Calendar,
+  CheckCircle2,
   ChevronDown,
   ClipboardCheck,
   ClipboardList,
+  Clock,
   FileCheck,
   FileCode,
   FileText,
   FolderOpen,
   GraduationCap,
+  List,
   LogOut,
   MessageCircle,
   MessageSquare,
   Moon,
   ScrollText,
   Sun,
+  TriangleAlert,
+  Upload,
   User,
   UserCheck,
   Video,
@@ -46,6 +53,7 @@ import {
 import {
   addFile,
   addHomework,
+  askQuestion,
   currentUser,
   getDb,
   gradeHomework,
@@ -85,6 +93,32 @@ import {
   ThemeGrading,
   Topics,
 } from "./screens.jsx";
+
+function formatDE(iso) {
+  if (!iso) return "–";
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
+  if (!d) return iso;
+  return `${d}.${m}.${y}`;
+}
+
+function letterFromPercent(n) {
+  const p = Number(n);
+  if (!Number.isFinite(p)) return "–";
+  if (p >= 90) return "A";
+  if (p >= 80) return "B";
+  if (p >= 70) return "C";
+  if (p >= 60) return "D";
+  return "F";
+}
+
+function statusClass(status) {
+  if (status === "Offen") return "st-open";
+  if (status === "Eingereicht") return "st-in";
+  if (status === "Bewertet") return "st-ok";
+  if (status === "Erledigt") return "st-done";
+  if (status === "Überarbeitung nötig") return "st-rev";
+  return "";
+}
 
 function initials(name) {
   if (!name) return "U";
@@ -592,56 +626,122 @@ function HomeworkTeacher({ user }) {
   const [subject, setSubject] = useState("Mathematik");
   const [due, setDue] = useState("2026-08-28");
   const [text, setText] = useState("");
+  const [openForm, setOpenForm] = useState(false);
+  const [tab, setTab] = useState("aktuell");
   const db = getDb();
   const nav = useNavigate();
+  const rows = db.homework.map((h) => {
+    const subs = db.submissions.filter((s) => s.homeworkId === h.id);
+    const done = subs.filter((s) => s.status !== "Offen").length;
+    return { h, subs, done, total: subs.length };
+  });
+  const shown = rows.filter((r) => (tab === "archiv" ? r.done === r.total && r.total > 0 : !(r.done === r.total && r.total > 0)));
   return (
     <>
       <Back to="/teacher" />
-      <h1>Hausaufgaben-Management</h1>
-      <p className="muted">Hausaufgaben erstellen, bearbeiten und Schüler-Abgaben verwalten</p>
-      <form
-        className="hw"
-        style={{ marginTop: 16 }}
-        onSubmit={(e) => {
-          e.preventDefault();
-          addHomework({ title, subject, due, text, createdBy: user.id });
-          setTitle("");
-          setText("");
-        }}
-      >
-        <h3>Neue Aufgabe</h3>
-        <div className="stack">
-          <label className="field">
-            Titel
-            <input value={title} onChange={(e) => setTitle(e.target.value)} required />
-          </label>
-          <label className="field">
-            Fach
-            <input value={subject} onChange={(e) => setSubject(e.target.value)} />
-          </label>
-          <label className="field">
-            Fällig
-            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
-          </label>
-          <label className="field">
-            Text
-            <textarea value={text} onChange={(e) => setText(e.target.value)} />
-          </label>
-          <button className="btn" type="submit">
-            Anlegen
-          </button>
+      <div className="page-head">
+        <div>
+          <h1>Hausaufgaben-Management</h1>
+          <p className="muted">Hausaufgaben erstellen, bearbeiten und Schüler-Abgaben verwalten</p>
         </div>
-      </form>
-      <div className="stack" style={{ marginTop: 24 }}>
-        {db.homework.map((h) => (
-          <article key={h.id} className="hw" style={{ cursor: "pointer" }} onClick={() => nav(`/teacher/homework/${h.id}`)}>
-            <h3>{h.title}</h3>
-            <p className="muted">
-              {h.subject} · bis {h.due}
-            </p>
-            <p>{h.text}</p>
-          </article>
-        ))}
+        <button className="btn" type="button" onClick={() => setOpenForm((v) => !v)}>
+          Neue Aufgabe
+        </button>
+      </div>
+      <div className="tabs">
+        <button type="button" className={tab === "aktuell" ? "on" : ""} onClick={() => setTab("aktuell")}>
+          Aktuell ({rows.filter((r) => !(r.done === r.total && r.total > 0)).length})
+        </button>
+        <button type="button" className={tab === "archiv" ? "on" : ""} onClick={() => setTab("archiv")}>
+          <Archive size={14} /> Archiv
+        </button>
+      </div>
+      {openForm ? (
+        <form
+          className="hw"
+          style={{ marginTop: 16 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            addHomework({ title, subject, due, text, createdBy: user.id });
+            setTitle("");
+            setText("");
+            setOpenForm(false);
+          }}
+        >
+          <h3>Neue Aufgabe</h3>
+          <div className="stack">
+            <label className="field">
+              Titel
+              <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+            </label>
+            <label className="field">
+              Fach
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} />
+            </label>
+            <label className="field">
+              Fälligkeit
+              <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+            </label>
+            <label className="field">
+              Aufgabenstellung
+              <textarea value={text} onChange={(e) => setText(e.target.value)} />
+            </label>
+            <button className="btn" type="submit">
+              Anlegen
+            </button>
+          </div>
+        </form>
+      ) : null}
+      <div className="table-wrap" style={{ marginTop: 16 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Titel</th>
+              <th>Fach</th>
+              <th>Klasse/Zug</th>
+              <th>Typ</th>
+              <th>Fälligkeit</th>
+              <th>Fortschritt</th>
+              <th>Aktionen</th>
+            </tr>
+          </thead>
+          <tbody>
+            {shown.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="muted" style={{ textAlign: "center", padding: 32 }}>
+                  Keine Hausaufgaben gefunden
+                </td>
+              </tr>
+            ) : (
+              shown.map(({ h, done, total }) => (
+                <tr key={h.id}>
+                  <td className="strong">{h.title}</td>
+                  <td>
+                    <span className="badge">{h.subject}</span>
+                  </td>
+                  <td className="muted">Klasse 11 a</td>
+                  <td>
+                    <span className="badge">Abgabe</span>
+                  </td>
+                  <td>{formatDE(h.due)}</td>
+                  <td>
+                    <div className="progress">
+                      <span className="progress-bar" style={{ width: `${total ? Math.round((done / total) * 100) : 0}%` }} />
+                    </div>
+                    <span className="muted">
+                      {done}/{total}
+                    </span>
+                  </td>
+                  <td>
+                    <button className="btn outline" type="button" onClick={() => nav(`/teacher/homework/${h.id}`)}>
+                      Öffnen
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </>
   );
@@ -706,45 +806,280 @@ function HomeworkTeacherDetail() {
 function HomeworkStudent({ user }) {
   const db = getDb();
   const sid = viewStudentId(user);
-  const mine = db.submissions.filter((s) => s.studentId === sid);
+  const parentView = user.role === "eltern";
+  const teacher = db.users.find((u) => u.role === "lehrer");
+  const rows = db.submissions
+    .filter((s) => s.studentId === sid)
+    .map((sub) => ({ sub, hw: db.homework.find((x) => x.id === sub.homeworkId) }))
+    .filter((r) => r.hw);
   const [tab, setTab] = useState("aktuell");
-  const rows = mine.filter((s) => (tab === "archiv" ? s.status === "Bewertet" : s.status !== "Bewertet"));
+  const [layout, setLayout] = useState("list");
+  const [fach, setFach] = useState("all");
+  const [status, setStatus] = useState("all");
+  const [sel, setSel] = useState(rows[0]?.sub.id || null);
+  const [fileName, setFileName] = useState("");
+  const [comment, setComment] = useState("");
+  const [question, setQuestion] = useState("");
+  const archived = (st) => st === "Bewertet" || st === "Erledigt";
+  const aktuell = rows.filter((r) => !archived(r.sub.status));
+  const archiv = rows.filter((r) => archived(r.sub.status));
+  const pool = tab === "archiv" ? archiv : aktuell;
+  const subjects = [...new Set(pool.map((r) => r.hw.subject))];
+  const filtered = pool.filter((r) => {
+    if (fach !== "all" && r.hw.subject !== fach) return false;
+    if (status !== "all" && r.sub.status !== status) return false;
+    return true;
+  });
+  const selected = filtered.find((r) => r.sub.id === sel) || filtered[0] || null;
+  const count = (st) => pool.filter((r) => r.sub.status === st).length;
+  const qs = selected ? db.questions.filter((q) => q.homeworkId === selected.hw.id && q.studentId === sid) : [];
+  const groups = tab === "archiv"
+    ? [
+        ["Bewertet", "Bewertet", CheckCircle2],
+        ["Erledigt", "Erledigt", CheckCircle2],
+      ]
+    : [
+        ["Offen", "Offene Aufgaben", Clock],
+        ["Eingereicht", "Eingereicht", CheckCircle2],
+        ["Überarbeitung nötig", "Überarbeitung nötig", TriangleAlert],
+      ];
+
   return (
     <>
       <Back to={homePath(user)} />
-      <h1>Meine Hausaufgaben</h1>
-      <div className="tabs">
-        <button type="button" className={tab === "aktuell" ? "on" : ""} onClick={() => setTab("aktuell")}>
-          Aktuell ({mine.filter((s) => s.status !== "Bewertet").length})
-        </button>
-        <button type="button" className={tab === "archiv" ? "on" : ""} onClick={() => setTab("archiv")}>
-          <Archive size={14} /> Archiv ({mine.filter((s) => s.status === "Bewertet").length})
-        </button>
-      </div>
-      {rows.map((s) => {
-        const h = db.homework.find((x) => x.id === s.homeworkId);
-        if (!h) return null;
-        return (
-          <article className="hw" key={s.id}>
-            <h3>{h.title}</h3>
-            <p className="muted">
-              {h.subject} · bis {h.due} · <span className="badge">{s.status}</span>
-            </p>
-            <p>{h.text}</p>
-            {s.status === "Offen" ? (
-              <button className="btn" type="button" onClick={() => submitHomework(h.id, sid, "abgabe.pdf")}>
-                PDF einreichen
+      <div className="hw-split">
+        <aside className="hw-side">
+          <div className="hw-side-h">
+            <h2>
+              <FileText size={18} /> Meine Hausaufgaben
+            </h2>
+            <span className="muted">
+              {filtered.length} von {pool.length} Hausaufgabe{pool.length === 1 ? "" : "n"}
+            </span>
+            <div className="tabs">
+              <button type="button" className={tab === "aktuell" ? "on" : ""} onClick={() => { setTab("aktuell"); setStatus("all"); }}>
+                Aktuell ({aktuell.length})
               </button>
+              <button type="button" className={tab === "archiv" ? "on" : ""} onClick={() => { setTab("archiv"); setStatus("all"); }}>
+                <Archive size={12} /> Archiv ({archiv.length})
+              </button>
+            </div>
+            <div className="row">
+              <button type="button" className={`btn ${layout === "list" ? "" : "outline"}`} style={{ height: 32, fontSize: 12, flex: 1 }} onClick={() => setLayout("list")}>
+                <List size={12} /> Liste
+              </button>
+              <button type="button" className={`btn ${layout === "themen" ? "" : "outline"}`} style={{ height: 32, fontSize: 12, flex: 1 }} onClick={() => setLayout("themen")}>
+                <BookOpen size={12} /> Themen
+              </button>
+            </div>
+            <select value={fach} onChange={(e) => setFach(e.target.value)}>
+              <option value="all">Alle Fächer</option>
+              {subjects.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+            <div className="chip-row">
+              <button type="button" className={status === "all" ? "mini on" : "mini"} onClick={() => setStatus("all")}>
+                Alle
+              </button>
+              {(tab === "aktuell" ? ["Offen", "Eingereicht"] : ["Bewertet", "Erledigt"]).map((st) => (
+                <button key={st} type="button" className={status === st ? "mini on" : "mini"} onClick={() => setStatus(st)}>
+                  {st}
+                  {count(st) ? <span className={`dot-n ${statusClass(st)}`}>{count(st)}</span> : null}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="hw-list">
+            {filtered.length === 0 ? (
+              <div className="empty">
+                <FileText size={40} />
+                <p>{pool.length === 0 ? (tab === "archiv" ? "Keine archivierten Hausaufgaben" : "Keine aktuellen Hausaufgaben") : "Keine Hausaufgaben für die gewählten Filter"}</p>
+              </div>
+            ) : layout === "themen" ? (
+              subjects.filter((s) => fach === "all" || s === fach).map((s) => (
+                <div key={s} className="hw-group">
+                  <h3>
+                    <BookOpen size={14} /> {s}
+                  </h3>
+                  {filtered.filter((r) => r.hw.subject === s).map((r) => (
+                    <button
+                      key={r.sub.id}
+                      type="button"
+                      className={`hw-item ${selected?.sub.id === r.sub.id ? "on" : ""}`}
+                      onClick={() => setSel(r.sub.id)}
+                    >
+                      <strong>{r.hw.title}</strong>
+                      <span className="muted">
+                        <Calendar size={12} /> {formatDE(r.hw.due)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ))
             ) : (
-              <p className="ok">
-                {s.status}
-                {s.grade != null ? ` · ${s.grade}%` : ""} {s.feedback}
-              </p>
+              groups.map(([st, label, Icon]) => {
+                const items = filtered.filter((r) => r.sub.status === st);
+                if (!items.length) return null;
+                return (
+                  <div key={st} className="hw-group">
+                    <h3>
+                      <Icon size={14} /> {label} ({items.length})
+                    </h3>
+                    {items.map((r) => (
+                      <button
+                        key={r.sub.id}
+                        type="button"
+                        className={`hw-item ${selected?.sub.id === r.sub.id ? "on" : ""}`}
+                        onClick={() => setSel(r.sub.id)}
+                      >
+                        <strong>{r.hw.title}</strong>
+                        <span>{r.hw.subject}</span>
+                        <span className="muted">
+                          <Calendar size={12} /> {formatDE(r.hw.due)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                );
+              })
             )}
-          </article>
-        );
-      })}
-      {rows.length === 0 ? <p className="muted">Keine Hausaufgaben in dieser Ansicht.</p> : null}
+          </div>
+        </aside>
+        <section className="hw-detail">
+          {!selected ? (
+            <div className="empty">
+              <FileText size={48} />
+              <p>Wählen Sie eine Hausaufgabe aus der Liste aus</p>
+              <p className="muted">um Details zu sehen und Ihre Lösung einzureichen</p>
+            </div>
+          ) : (
+            <>
+              <article className="hw">
+                <div className="page-head">
+                  <div>
+                    <h2>{selected.hw.title}</h2>
+                    <p className="muted">
+                      Klasse 11 a • {selected.hw.subject}
+                    </p>
+                  </div>
+                  <span className={`badge ${statusClass(selected.sub.status)}`}>{selected.sub.status}</span>
+                </div>
+                <p className="muted" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+                  <Calendar size={16} /> Fällig: {formatDE(selected.hw.due)}
+                </p>
+                <h4>Aufgabenstellung:</h4>
+                <p className="brief">{selected.hw.text}</p>
+                <p className="muted">Erstellt von: {teacher?.name}</p>
+                <div className="file-row">
+                  <FileText size={16} />
+                  <span>{selected.hw.title}.pdf</span>
+                  <span className="muted">Arbeitsblatt</span>
+                </div>
+                {selected.sub.fileName ? (
+                  <div>
+                    <h4>Eingereichte Dateien:</h4>
+                    <div className="file-row">
+                      <FileText size={16} />
+                      <span>{selected.sub.fileName}</span>
+                    </div>
+                  </div>
+                ) : null}
+                {selected.sub.status === "Eingereicht" ? (
+                  <div className="note blue">
+                    <CheckCircle2 size={18} />
+                    <div>
+                      <strong>Aufgabe eingereicht</strong>
+                      <p>Nach der Abgabe sind keine Änderungen mehr möglich, bis dein Lehrer eine Überarbeitung anfordert.</p>
+                    </div>
+                  </div>
+                ) : null}
+                {selected.sub.status === "Bewertet" ? (
+                  <div className="note green">
+                    <Award size={18} />
+                    <div>
+                      <strong>Deine Bewertung</strong>
+                      <p className="grade-lg">
+                        {letterFromPercent(selected.sub.grade)} <span>{selected.sub.grade}%</span>
+                      </p>
+                      {selected.sub.feedback ? (
+                        <>
+                          <h4>Feedback vom Lehrer:</h4>
+                          <p>{selected.sub.feedback}</p>
+                        </>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : null}
+              </article>
+              {!parentView && (selected.sub.status === "Offen" || selected.sub.status === "Überarbeitung nötig") ? (
+                <article className="hw">
+                  <h3>
+                    <Upload size={18} /> Lösung einreichen
+                  </h3>
+                  <p className="muted">Laden Sie Ihre bearbeiteten Lösungsdateien hoch</p>
+                  <label className="drop">
+                    <Upload size={20} /> Mehrere Lösungsdateien auswählen
+                    <input
+                      type="file"
+                      hidden
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) setFileName(f.name);
+                      }}
+                    />
+                  </label>
+                  <p className="muted">Unterstützte Formate: PDF, DOC, DOCX, JPG, PNG · Max. 10MB</p>
+                  {fileName ? <p className="ok">Ausgewählt: {fileName}</p> : null}
+                  <label className="field">
+                    Kommentar zur Einreichung an den Lehrer (optional)
+                    <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="Falls Sie dem Lehrer etwas mitteilen möchten…" />
+                  </label>
+                  <button
+                    className="btn block"
+                    type="button"
+                    disabled={!fileName}
+                    onClick={() => {
+                      submitHomework(selected.hw.id, sid, fileName);
+                      setFileName("");
+                      setComment("");
+                    }}
+                  >
+                    <Upload size={16} /> Datei einreichen
+                  </button>
+                  <details className="hw-chat">
+                    <summary>
+                      <MessageSquare size={16} /> Hausaufgaben Chat (Nachfrage an Lehrer)
+                      {qs.length ? <span className="badge">{qs.length}</span> : null}
+                    </summary>
+                    {qs.map((q) => (
+                      <div className="q-bubble" key={q.id}>
+                        <p className="q-you">{q.text}</p>
+                        {q.answer ? <p className="q-teacher">{q.answer}</p> : <p className="muted">Noch keine Antwort</p>}
+                      </div>
+                    ))}
+                    <textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Stelle hier deine Frage..." rows={3} />
+                    <button
+                      className="btn outline"
+                      type="button"
+                      disabled={!question.trim()}
+                      onClick={() => {
+                        askQuestion(selected.hw.id, sid, question.trim());
+                        setQuestion("");
+                      }}
+                    >
+                      Frage senden
+                    </button>
+                  </details>
+                </article>
+              ) : null}
+              {parentView ? <p className="muted">Nur Leseansicht – Eltern können keine Abgaben senden.</p> : null}
+            </>
+          )}
+        </section>
+      </div>
     </>
   );
 }
