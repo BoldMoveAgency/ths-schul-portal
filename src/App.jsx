@@ -64,7 +64,6 @@ import {
   getDb,
   gradeHomework,
   homePath,
-  hydrateCloud,
   login,
   logout,
   markNoticeRead,
@@ -76,6 +75,7 @@ import {
   unreadCount,
   viewStudentId,
 } from "./store.js";
+import { roomDisplayName } from "./store-model.js";
 import { toggleTheme, useTheme } from "./theme.js";
 import {
   AdminTasks,
@@ -138,22 +138,9 @@ function initials(name) {
 
 function useUser() {
   const [user, setUser] = useState(() => currentUser());
-  const [db, setDb] = useState(() => getDb());
-  const [ready, setReady] = useState(!import.meta.env.VITE_SUPABASE_URL);
+  const [, setDb] = useState(() => getDb());
   useEffect(() => subscribe(setDb), []);
-  useEffect(() => {
-    let alive = true;
-    hydrateCloud().then((next) => {
-      if (!alive) return;
-      setDb(next);
-      setUser(currentUser());
-      setReady(true);
-    });
-    return () => {
-      alive = false;
-    };
-  }, []);
-  return { user, setUser, db, ready };
+  return { user, setUser };
 }
 
 function Login({ user, setUser }) {
@@ -800,7 +787,7 @@ function HomeworkTeacherDetail() {
                   <td>{s.fileName || "–"}</td>
                   <td>{s.grade != null ? `${s.grade}%` : "–"}</td>
                   <td>
-                    <button className="btn" type="button" onClick={() => gradeHomework(s.id, grade, feedback)}>
+                    <button className="btn" type="button" disabled={s.status !== "Eingereicht"} onClick={() => gradeHomework(s.id, grade, feedback)}>
                       Bewerten
                     </button>
                   </td>
@@ -813,7 +800,7 @@ function HomeworkTeacherDetail() {
       <p className="row" style={{ marginTop: 12 }}>
         <label className="field">
           Note %
-          <input value={grade} onChange={(e) => setGrade(e.target.value)} style={{ width: 80 }} />
+          <input type="number" min="0" max="100" value={grade} onChange={(e) => setGrade(e.target.value)} style={{ width: 80 }} />
         </label>
         <label className="field">
           Feedback
@@ -1125,7 +1112,8 @@ function Chat({ user }) {
     const last = (db.reads[user.id] || {})[roomId] || "";
     return db.messages.filter((m) => m.roomId === roomId && m.createdAt > last && m.senderId !== user.id).length;
   };
-  const match = (r) => !q || r.name.toLowerCase().includes(q.toLowerCase());
+  const labelOf = (r) => roomDisplayName(r, user.id, db.users);
+  const match = (r) => !q || labelOf(r).toLowerCase().includes(q.toLowerCase());
   const groups = [
     ["klasse", "Klassenräume", rooms.filter((r) => r.type === "klasse" && match(r))],
     ["kurs", "Kursräume", rooms.filter((r) => r.type === "kurs" && match(r))],
@@ -1176,9 +1164,9 @@ function Chat({ user }) {
                         const n = unreadOf(r.id);
                         return (
                           <button key={r.id} type="button" className={`room-item ${active === r.id ? "on" : ""}`} onClick={() => setActive(r.id)}>
-                            <span className="avatar">{initials(r.name)}</span>
+                            <span className="avatar">{initials(labelOf(r))}</span>
                             <span className="room-meta">
-                              <strong>{r.name}</strong>
+                              <strong>{labelOf(r)}</strong>
                               <em>{last ? last.text : "Keine Nachrichten"}</em>
                             </span>
                             {n ? <span className="badge gold">{n}</span> : null}
@@ -1202,9 +1190,9 @@ function Chat({ user }) {
           ) : (
             <>
               <div className="chat-main-h">
-                <span className="avatar">{initials(room?.name)}</span>
+                <span className="avatar">{initials(labelOf(room))}</span>
                 <div>
-                  <strong>{room?.name}</strong>
+                  <strong>{labelOf(room)}</strong>
                   <p className="muted">{room?.type === "klasse" ? "Klassenraum" : room?.type === "kurs" ? "Kursraum" : "Direktnachricht"}</p>
                 </div>
               </div>
@@ -1592,18 +1580,7 @@ function ParentShell({ user, setUser, children }) {
 }
 
 export default function App() {
-  const { user, setUser, ready } = useUser();
-  if (!ready) {
-    return (
-      <div className="login-screen">
-        <div className="login-card">
-          <div className="hdr">
-            <p className="lede">Laden …</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  const { user, setUser } = useUser();
   const home = homePath(user);
 
   return (

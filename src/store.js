@@ -1,8 +1,6 @@
-import { supabase } from "./supabase.js";
+import { gradePercentFor, isDirectPair, normalizeRoom, unreadChatCount } from "./store-model.js";
 
 const KEY = "ths-demo-v4";
-const CLOUD_ID = "v1";
-
 const now = () => new Date().toISOString();
 
 const seed = {
@@ -171,9 +169,7 @@ function ensure(db) {
   }
   out.reads = out.reads || {};
   for (const u of out.users) out.reads[u.id] = out.reads[u.id] || {};
-  for (const r of out.rooms) {
-    if (!r.members.includes("p1")) r.members = [...r.members, "p1"];
-  }
+  out.rooms = out.rooms.map((room) => normalizeRoom(room, out.users));
   return out;
 }
 
@@ -194,32 +190,6 @@ function load() {
 function save(db) {
   localStorage.setItem(KEY, JSON.stringify(db));
   window.dispatchEvent(new Event("ths-db"));
-  if (supabase) {
-    supabase
-      .from("ths_demo_state")
-      .upsert({ id: CLOUD_ID, payload: db, updated_at: now() })
-      .then(({ error }) => {
-        if (error) console.warn("ths cloud save", error.message);
-      });
-  }
-}
-
-export async function hydrateCloud() {
-  if (!supabase) return load();
-  const { data, error } = await supabase.from("ths_demo_state").select("payload").eq("id", CLOUD_ID).maybeSingle();
-  if (error) {
-    console.warn("ths cloud load", error.message);
-    return load();
-  }
-  if (isDb(data?.payload)) {
-    const next = ensure(data.payload);
-    localStorage.setItem(KEY, JSON.stringify(next));
-    window.dispatchEvent(new Event("ths-db"));
-    return next;
-  }
-  const local = load();
-  await supabase.from("ths_demo_state").upsert({ id: CLOUD_ID, payload: local, updated_at: now() });
-  return local;
 }
 
 export function login(email, password) {
@@ -260,14 +230,7 @@ export function viewStudentId(user) {
 
 export function unreadCount(userId) {
   const db = load();
-  const reads = db.reads[userId] || {};
-  let n = 0;
-  for (const room of db.rooms.filter((r) => r.members.includes(userId))) {
-    const last = reads[room.id] || "";
-    n += db.messages.filter((m) => m.roomId === room.id && m.createdAt > last && m.senderId !== userId).length;
-  }
-  n += db.notices.filter((x) => x.to.includes(userId) && !x.read.includes(userId)).length;
-  return n;
+  return unreadChatCount(db, userId);
 }
 
 export function markRoomRead(userId, roomId) {
@@ -285,7 +248,7 @@ export function sendMessage(roomId, senderId, text) {
 
 export function addDirectRoom(userId, otherId) {
   const db = load();
-  const existing = db.rooms.find((r) => r.type === "direkt" && r.members.includes(userId) && r.members.includes(otherId));
+  const existing = db.rooms.find((room) => isDirectPair(room, userId, otherId));
   if (existing) return existing.id;
   const other = db.users.find((u) => u.id === otherId);
   const id = crypto.randomUUID();
@@ -334,13 +297,14 @@ export function submitHomework(homeworkId, studentId, fileName) {
 export function gradeHomework(subId, grade, feedback) {
   const db = load();
   const row = db.submissions.find((x) => x.id === subId);
-  if (!row) return;
-  const n = Number(grade);
-  if (!Number.isFinite(n)) return;
+  if (!row) return false;
+  const n = gradePercentFor(row.status, grade);
+  if (n == null) return false;
   row.grade = n;
   row.feedback = feedback;
   row.status = "Bewertet";
   save(db);
+  return true;
 }
 
 export function askQuestion(homeworkId, studentId, text) {
