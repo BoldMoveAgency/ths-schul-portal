@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="640" viewBox="0 0 900 640">
+  <rect width="900" height="640" fill="#f7fafc"/>
+  <rect x="0" y="0" width="900" height="72" fill="#2a5b5b"/>
+  <text x="40" y="46" fill="#eab72d" font-family="Rubik, Arial, sans-serif" font-size="28" font-weight="700">Ferienplan 2026</text>
+  <g font-family="Rubik, Arial, sans-serif">
+    <rect x="40" y="110" width="820" height="70" fill="#fff" stroke="#e2e8f0"/>
+    <text x="60" y="142" font-size="18" font-weight="700" fill="#2a5b5b">Weihnachten / Neujahr</text>
+    <text x="60" y="166" font-size="15" fill="#555">22.12.2025 – 09.01.2026</text>
+    <rect x="40" y="190" width="820" height="70" fill="#fffaf0" stroke="#e2e8f0"/>
+    <text x="60" y="222" font-size="18" font-weight="700" fill="#2a5b5b">Osterferien</text>
+    <text x="60" y="246" font-size="15" fill="#555">30.03.2026 – 10.04.2026</text>
+    <rect x="40" y="270" width="820" height="70" fill="#fff" stroke="#e2e8f0"/>
+    <text x="60" y="302" font-size="18" font-weight="700" fill="#2a5b5b">Pfingsten</text>
+    <text x="60" y="326" font-size="15" fill="#555">25.05.2026 – 29.05.2026</text>
+    <rect x="40" y="350" width="820" height="70" fill="#fffaf0" stroke="#e2e8f0"/>
+    <text x="60" y="382" font-size="18" font-weight="700" fill="#2a5b5b">Sommerferien</text>
+    <text x="60" y="406" font-size="15" fill="#555">13.07.2026 – 21.08.2026</text>
+    <rect x="40" y="430" width="820" height="70" fill="#fff" stroke="#e2e8f0"/>
+    <text x="60" y="462" font-size="18" font-weight="700" fill="#2a5b5b">Herbstferien</text>
+    <text x="60" y="486" font-size="15" fill="#555">05.10.2026 – 16.10.2026</text>
+  </g>
+  <text x="40" y="600" fill="#666" font-family="Rubik, Arial, sans-serif" font-size="14">Demo-Ferienplan. Kein Unterricht an diesen Tagen.</text>
+</svg>

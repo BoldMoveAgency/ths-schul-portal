@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720">
+  <rect width="1200" height="720" fill="#f7fafc"/>
+  <rect x="0" y="0" width="1200" height="72" fill="#2a5b5b"/>
+  <text x="40" y="46" fill="#eab72d" font-family="Rubik, Arial, sans-serif" font-size="28" font-weight="700">Klasse 11 a · Stundenplan 2026</text>
+  <text x="1160" y="46" text-anchor="end" fill="#fff" font-family="Rubik, Arial, sans-serif" font-size="16">Zug a · Lehrer: Ezra Schiesl</text>
+  <g font-family="Rubik, Arial, sans-serif" font-size="15">
+    <rect x="40" y="100" width="160" height="48" fill="#eab72d"/><text x="120" y="130" text-anchor="middle" font-weight="700">Block</text>
+    <rect x="200" y="100" width="220" height="48" fill="#2a5b5b"/><text x="310" y="130" text-anchor="middle" fill="#fff" font-weight="700">Montag</text>
+    <rect x="420" y="100" width="220" height="48" fill="#2a5b5b"/><text x="530" y="130" text-anchor="middle" fill="#fff" font-weight="700">Dienstag</text>
+    <rect x="640" y="100" width="220" height="48" fill="#2a5b5b"/><text x="750" y="130" text-anchor="middle" fill="#fff" font-weight="700">Mittwoch</text>
+    <rect x="860" y="100" width="260" height="48" fill="#2a5b5b"/><text x="990" y="130" text-anchor="middle" fill="#fff" font-weight="700">Donnerstag / Freitag</text>
+    <rect x="40" y="148" width="160" height="90" fill="#edf2f7"/><text x="120" y="200" text-anchor="middle" fill="#333" font-weight="600">1</text>
+    <rect x="200" y="148" width="220" height="90" fill="#fff" stroke="#e2e8f0"/><text x="310" y="190" text-anchor="middle" fill="#2a5b5b" font-weight="600">Mathematik</text><text x="310" y="212" text-anchor="middle" fill="#666" font-size="13">Schiesl · Zoom</text>
+    <rect x="420" y="148" width="220" height="90" fill="#fff" stroke="#e2e8f0"/><text x="530" y="190" text-anchor="middle" fill="#2a5b5b" font-weight="600">Englisch</text><text x="530" y="212" text-anchor="middle" fill="#666" font-size="13">Live</text>
+    <rect x="640" y="148" width="220" height="90" fill="#fff" stroke="#e2e8f0"/><text x="750" y="190" text-anchor="middle" fill="#2a5b5b" font-weight="600">Social Studies</text><text x="750" y="212" text-anchor="middle" fill="#666" font-size="13">Live</text>
+    <rect x="860" y="148" width="260" height="90" fill="#fff" stroke="#e2e8f0"/><text x="990" y="190" text-anchor="middle" fill="#2a5b5b" font-weight="600">Bibelkunde / Sport</text><text x="990" y="212" text-anchor="middle" fill="#666" font-size="13">Do Bibel · Fr Sport</text>
+    <rect x="40" y="238" width="160" height="90" fill="#edf2f7"/><text x="120" y="290" text-anchor="middle" fill="#333" font-weight="600">2</text>
+    <rect x="200" y="238" width="220" height="90" fill="#fffaf0" stroke="#e2e8f0"/><text x="310" y="280" text-anchor="middle" fill="#2a5b5b" font-weight="600">Englisch</text>
+    <rect x="420" y="238" width="220" height="90" fill="#fffaf0" stroke="#e2e8f0"/><text x="530" y="280" text-anchor="middle" fill="#2a5b5b" font-weight="600">Mathematik</text>
+    <rect x="640" y="238" width="220" height="90" fill="#fffaf0" stroke="#e2e8f0"/><text x="750" y="280" text-anchor="middle" fill="#2a5b5b" font-weight="600">Naturlehre</text>
+    <rect x="860" y="238" width="260" height="90" fill="#fffaf0" stroke="#e2e8f0"/><text x="990" y="280" text-anchor="middle" fill="#2a5b5b" font-weight="600">Kunst / Mathematik</text>
+    <rect x="40" y="328" width="160" height="90" fill="#edf2f7"/><text x="120" y="380" text-anchor="middle" fill="#333" font-weight="600">3</text>
+    <rect x="200" y="328" width="220" height="90" fill="#fff" stroke="#e2e8f0"/><text x="310" y="370" text-anchor="middle" fill="#2a5b5b" font-weight="600">Naturlehre</text>
+    <rect x="420" y="328" width="220" height="90" fill="#fff" stroke="#e2e8f0"/><text x="530" y="370" text-anchor="middle" fill="#2a5b5b" font-weight="600">Social Studies</text>
+    <rect x="640" y="328" width="220" height="90" fill="#fff" stroke="#e2e8f0"/><text x="750" y="370" text-anchor="middle" fill="#2a5b5b" font-weight="600">Englisch</text>
+    <rect x="860" y="328" width="260" height="90" fill="#fff" stroke="#e2e8f0"/><text x="990" y="370" text-anchor="middle" fill="#2a5b5b" font-weight="600">Wahlfach KI-Tutor</text>
+    <rect x="40" y="418" width="160" height="90" fill="#edf2f7"/><text x="120" y="470" text-anchor="middle" fill="#333" font-weight="600">4</text>
+    <rect x="200" y="418" width="220" height="90" fill="#fffaf0" stroke="#e2e8f0"/><text x="310" y="460" text-anchor="middle" fill="#2a5b5b" font-weight="600">Hausaufgabenzeit</text>
+    <rect x="420" y="418" width="220" height="90" fill="#fffaf0" stroke="#e2e8f0"/><text x="530" y="460" text-anchor="middle" fill="#2a5b5b" font-weight="600">Hausaufgabenzeit</text>
+    <rect x="640" y="418" width="220" height="90" fill="#fffaf0" stroke="#e2e8f0"/><text x="750" y="460" text-anchor="middle" fill="#2a5b5b" font-weight="600">Bibelkunde</text>
+    <rect x="860" y="418" width="260" height="90" fill="#fffaf0" stroke="#e2e8f0"/><text x="990" y="460" text-anchor="middle" fill="#2a5b5b" font-weight="600">Elternsprechstunde</text>
+  </g>
+  <text x="40" y="690" fill="#666" font-family="Rubik, Arial, sans-serif" font-size="14">Klasse 11 a · Demo. Kein Passwort im Klartext. Zoom über Klassenraum.</text>
+</svg>

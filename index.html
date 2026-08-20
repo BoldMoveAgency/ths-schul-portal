@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>THS Homeschooling System</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("ths-theme") === "dark" ? "dark" : "light";
+          document.documentElement.setAttribute("data-theme", t);
+          document.documentElement.classList.toggle("dark", t === "dark");
+          document.documentElement.style.colorScheme = t;
+        } catch (e) {}
+        window.addEventListener("error", function (e) {
+          var r = document.getElementById("root");
+          if (r) r.insertAdjacentText("afterbegin", "Fehler: " + e.message + " ");
+        });
+        window.addEventListener("unhandledrejection", function (e) {
+          var r = document.getElementById("root");
+          if (r) r.insertAdjacentText("afterbegin", "Fehler: " + String(e.reason) + " ");
+        });
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
