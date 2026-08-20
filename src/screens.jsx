@@ -3,13 +3,16 @@ import { useNavigate } from "react-router-dom";
 import {
   BookOpen,
   Calendar,
+  CheckCircle2,
   ClipboardCheck,
+  Clock,
   FileText,
   FolderOpen,
   Globe,
   GraduationCap,
   HeartPulse,
   MessageCircle,
+  Upload,
   User,
   Users,
   Wallet,
@@ -50,6 +53,13 @@ function homeOf(user) {
   if (user.role === "lehrer") return "/teacher";
   if (user.role === "eltern") return "/parent";
   return "/student/dashboard";
+}
+
+function formatDE(iso) {
+  if (!iso) return "–";
+  const [y, m, d] = String(iso).slice(0, 10).split("-");
+  if (!d) return iso;
+  return `${d}.${m}.${y}`;
 }
 
 export function HomeworkQuestions({ user }) {
@@ -208,30 +218,91 @@ export function ModulesTeacher() {
 export function ModulesStudent({ user }) {
   const db = getDb();
   const sid = user.role === "eltern" ? user.childId : user.id;
-  const mine = db.moduleTasks.filter((t) => t.studentId === sid);
+  const parentView = user.role === "eltern";
+  const mine = db.moduleTasks
+    .filter((t) => t.studentId === sid)
+    .map((t) => ({ t, mod: db.modules.find((m) => m.id === t.moduleId) }));
+  const [sel, setSel] = useState(mine[0]?.t.id || null);
+  const [status, setStatus] = useState("all");
+  const filtered = mine.filter((r) => (status === "all" ? true : r.t.status === status));
+  const selected = filtered.find((r) => r.t.id === sel) || filtered[0] || null;
   return (
     <>
       <Back to={homeOf(user)} />
-      <h1>Meine Wahlfach-Aufgaben</h1>
-      {mine.length === 0 ? <p className="muted">0 Aufgaben.</p> : null}
-      {mine.map((t) => {
-        const mod = db.modules.find((m) => m.id === t.moduleId);
-        return (
-          <article className="hw" key={t.id}>
-            <h3>{t.title}</h3>
-            <p className="muted">
-              {mod?.name} · bis {t.due} · {t.status}
-            </p>
-            {t.status === "Offen" ? (
-              <button className="btn" type="button" onClick={() => submitModuleTask(t.id)}>
-                Einreichen
-              </button>
+      <div className="hw-split">
+        <aside className="hw-side">
+          <div className="hw-side-h">
+            <h2>
+              <FileText size={18} /> Aufgaben
+            </h2>
+            <span className="muted">{filtered.length} Aufgabe(n) verfügbar</span>
+            <select value={status} onChange={(e) => setStatus(e.target.value)}>
+              <option value="all">Alle Aufgaben</option>
+              <option value="Offen">Offen</option>
+              <option value="Eingereicht">Eingereicht</option>
+              <option value="Bewertet">Bewertet</option>
+            </select>
+          </div>
+          <div className="hw-list">
+            {filtered.length === 0 ? (
+              <div className="empty">
+                <FileText size={40} />
+                <p>Keine Wahlfach-Aufgaben</p>
+              </div>
             ) : (
-              <p className="ok">Eingereicht</p>
+              filtered.map((r) => (
+                <button
+                  key={r.t.id}
+                  type="button"
+                  className={`hw-item ${selected?.t.id === r.t.id ? "on" : ""}`}
+                  onClick={() => setSel(r.t.id)}
+                >
+                  <strong>{r.t.title}</strong>
+                  <span>{r.mod?.name}</span>
+                  <span className="muted">
+                    <Calendar size={12} /> {formatDE(r.t.due)}
+                  </span>
+                </button>
+              ))
             )}
-          </article>
-        );
-      })}
+          </div>
+        </aside>
+        <section className="hw-detail">
+          {!selected ? (
+            <div className="empty">
+              <FileText size={48} />
+              <p>Wählen Sie eine Aufgabe aus der Liste aus</p>
+            </div>
+          ) : (
+            <>
+              <article className="hw">
+                <div className="page-head">
+                  <div>
+                    <h2>{selected.t.title}</h2>
+                    <p className="muted">{selected.mod?.name}</p>
+                  </div>
+                  <span className={`badge ${selected.t.status === "Offen" ? "st-open" : "st-in"}`}>{selected.t.status}</span>
+                </div>
+                <p className="muted" style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 12 }}>
+                  <Calendar size={16} /> Fällig: {formatDE(selected.t.due)}
+                </p>
+                <h4>Aufgabenstellung:</h4>
+                <p className="brief">Bitte die Wahlfach-Aufgabe bearbeiten und als Datei einreichen.</p>
+              </article>
+              {!parentView && selected.t.status === "Offen" ? (
+                <article className="hw">
+                  <h3>
+                    <Upload size={18} /> Lösung einreichen
+                  </h3>
+                  <button className="btn block" type="button" onClick={() => submitModuleTask(selected.t.id)}>
+                    Als eingereicht markieren
+                  </button>
+                </article>
+              ) : null}
+            </>
+          )}
+        </section>
+      </div>
     </>
   );
 }
@@ -314,50 +385,90 @@ export function TestsTeacher() {
 export function TestsStudent({ user }) {
   const db = getDb();
   const [pick, setPick] = useState({});
+  const [openId, setOpenId] = useState(null);
   const sid = user.role === "eltern" ? user.childId : user.id;
+  const parentView = user.role === "eltern";
+  const open = db.tests.find((t) => t.id === openId);
   return (
     <>
-      <Back to={homeOf(user)} />
-      <h1>Meine Tests</h1>
-      {db.tests.map((t) => {
-        const att = db.testAttempts.find((a) => a.testId === t.id && a.studentId === sid);
-        return (
-          <article className="hw" key={t.id}>
-            <h3>{t.title}</h3>
-            {att ? (
-              <p className="ok">Abgeschlossen · {att.score} %</p>
-            ) : (
-              <>
-                {t.questions.map((q, i) => (
-                  <p key={i}>
-                    {q.q}{" "}
-                    <select
-                      value={pick[t.id]?.[i] ?? ""}
-                      onChange={(e) =>
-                        setPick({ ...pick, [t.id]: { ...(pick[t.id] || {}), [i]: e.target.value } })
-                      }
-                    >
-                      <option value="">–</option>
-                      {q.options.map((o, oi) => (
-                        <option key={oi} value={oi}>
-                          {o}
-                        </option>
-                      ))}
-                    </select>
-                  </p>
+      {open ? (
+        <>
+          <button className="btn ghost back" type="button" onClick={() => setOpenId(null)}>
+            ← Zurück zu Meine Tests
+          </button>
+          <h1>{open.title}</h1>
+          <p className="muted">{open.subject} · {open.questions.length} Fragen</p>
+          {open.questions.map((q, i) => (
+            <article className="hw" key={i}>
+              <h3>
+                {i + 1}. {q.q}
+              </h3>
+              <div className="stack" style={{ marginTop: 8 }}>
+                {q.options.map((o, oi) => (
+                  <label key={oi} className="choice">
+                    <input
+                      type="radio"
+                      name={`q${i}`}
+                      checked={String(pick[open.id]?.[i] ?? "") === String(oi)}
+                      onChange={() => setPick({ ...pick, [open.id]: { ...(pick[open.id] || {}), [i]: String(oi) } })}
+                      disabled={parentView}
+                    />
+                    {o}
+                  </label>
                 ))}
-                <button
-                  className="btn"
-                  type="button"
-                  onClick={() => submitTest(t.id, sid, t.questions.map((_, i) => pick[t.id]?.[i]))}
-                >
-                  Abgeben
-                </button>
-              </>
-            )}
-          </article>
-        );
-      })}
+              </div>
+            </article>
+          ))}
+          {!parentView ? (
+            <p style={{ marginTop: 16 }}>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => {
+                  submitTest(open.id, sid, open.questions.map((_, i) => pick[open.id]?.[i]));
+                  setOpenId(null);
+                }}
+              >
+                Test abgeben
+              </button>
+            </p>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <Back to={homeOf(user)} />
+          <h1>Meine Tests</h1>
+          <p className="muted">Online-Tests und Prüfungen</p>
+          <h3 style={{ marginTop: 24 }}>Verfügbare Tests</h3>
+          {db.tests.map((t) => {
+            const att = db.testAttempts.find((a) => a.testId === t.id && a.studentId === sid);
+            return (
+              <article className="hw" key={t.id}>
+                <div className="page-head">
+                  <div>
+                    <h3>{t.title}</h3>
+                    <p className="muted">
+                      {t.subject} · {t.questions.length} Fragen
+                    </p>
+                  </div>
+                  {att ? <span className="badge st-ok">Abgeschlossen · {att.score}%</span> : <span className="badge st-open">Offen</span>}
+                </div>
+                {att ? (
+                  <p className="ok" style={{ marginTop: 8 }}>
+                    Ergebnis: {att.score} %
+                  </p>
+                ) : (
+                  <p style={{ marginTop: 12 }}>
+                    <button className="btn" type="button" onClick={() => setOpenId(t.id)}>
+                      {parentView ? "Öffnen" : "Test starten"}
+                    </button>
+                  </p>
+                )}
+              </article>
+            );
+          })}
+        </>
+      )}
     </>
   );
 }

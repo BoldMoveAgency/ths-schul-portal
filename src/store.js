@@ -1,6 +1,6 @@
 import { supabase } from "./supabase.js";
 
-const KEY = "ths-demo-v2";
+const KEY = "ths-demo-v3";
 const CLOUD_ID = "v1";
 
 const now = () => new Date().toISOString();
@@ -79,11 +79,18 @@ const seed = {
   files: [
     { id: "f1", name: "Stundenplan Klasse 11.pdf", folder: "Stundenpläne", by: "t1" },
     { id: "f2", name: "Ferienplan 2026.pdf", folder: "Organisatorisches", by: "t1" },
+    { id: "f3", name: "Hausordnung.pdf", folder: "Allgemeine Infos", by: "t1" },
+    { id: "f4", name: "Lektüreliste Klasse 11.pdf", folder: "Bibliothek", by: "t1" },
+    { id: "f5", name: "Notenskala.pdf", folder: "Leistungsbewertung", by: "t1" },
   ],
   notices: [
     { id: "n1", title: "Infostunde", body: "Elternabend digital am Donnerstag 19 Uhr.", to: ["s1", "p1"], read: [] },
   ],
-  grades: [{ id: "g1", studentId: "s1", subject: "Mathematik", title: "Themennote Q3", percent: 82, letter: "B" }],
+  grades: [
+    { id: "g1", studentId: "s1", subject: "Mathematik", title: "Themennote Q3", percent: 82, letter: "B", kind: "thema", topic: "Quadratische Gleichungen", date: "2026-06-20" },
+    { id: "g2", studentId: "s1", subject: "Mathematik", title: "Blatt 01", percent: 78, letter: "C+", kind: "hausaufgabe", topic: "Quadratische Gleichungen", date: "2026-08-18" },
+    { id: "g3", studentId: "s1", subject: "Social Studies", title: "Urban Literacy", percent: 88, letter: "B+", kind: "hausaufgabe", topic: "Urban Literacy", date: "2026-08-12" },
+  ],
   topics: [
     { id: "tp1", name: "Quadratische Gleichungen", subject: "Mathematik", quarter: "Q3" },
     { id: "tp2", name: "Urban Literacy", subject: "Social Studies", quarter: "Q3" },

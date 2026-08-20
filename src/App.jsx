@@ -755,40 +755,55 @@ function HomeworkTeacherDetail() {
   const [grade, setGrade] = useState("80");
   const [feedback, setFeedback] = useState("Gute Arbeit.");
   if (!h) return <p>Nicht gefunden.</p>;
+  const done = subs.filter((s) => s.status !== "Offen").length;
   return (
     <>
       <Back to="/teacher/homework" label="Zurück zu Hausaufgaben" />
-      <h1>{h.title}</h1>
-      <p className="muted">{h.text}</p>
-      <table style={{ marginTop: 16 }}>
-        <thead>
-          <tr>
-            <th>Schüler</th>
-            <th>Status</th>
-            <th>Datei</th>
-            <th>Note</th>
-            <th>Aktion</th>
-          </tr>
-        </thead>
-        <tbody>
-          {subs.map((s) => {
-            const stu = db.users.find((u) => u.id === s.studentId);
-            return (
-              <tr key={s.id}>
-                <td>{stu?.name}</td>
-                <td>{s.status}</td>
-                <td>{s.fileName || "–"}</td>
-                <td>{s.grade ?? "–"}</td>
-                <td>
-                  <button className="btn" type="button" onClick={() => gradeHomework(s.id, grade, feedback)}>
-                    Bewerten
-                  </button>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <div className="page-head">
+        <div>
+          <h1>{h.title}</h1>
+          <p className="muted">
+            {h.subject} · Klasse 11 a · Fällig {formatDE(h.due)}
+          </p>
+        </div>
+        <span className="badge">
+          {done}/{subs.length} abgegeben
+        </span>
+      </div>
+      <p className="brief">{h.text}</p>
+      <div className="table-wrap" style={{ marginTop: 16 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Schüler</th>
+              <th>Status</th>
+              <th>Datei</th>
+              <th>Note</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {subs.map((s) => {
+              const stu = db.users.find((u) => u.id === s.studentId);
+              return (
+                <tr key={s.id}>
+                  <td className="strong">{stu?.name}</td>
+                  <td>
+                    <span className={`badge ${statusClass(s.status)}`}>{s.status}</span>
+                  </td>
+                  <td>{s.fileName || "–"}</td>
+                  <td>{s.grade != null ? `${s.grade}%` : "–"}</td>
+                  <td>
+                    <button className="btn" type="button" onClick={() => gradeHomework(s.id, grade, feedback)}>
+                      Bewerten
+                    </button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
       <p className="row" style={{ marginTop: 12 }}>
         <label className="field">
           Note %
@@ -1141,37 +1156,95 @@ function Grades({ user }) {
   const sid = viewStudentId(user);
   const rows = user.role === "lehrer" ? db.grades : db.grades.filter((g) => g.studentId === sid);
   const home = homePath(user);
+  const [tab, setTab] = useState("subjects");
+  const bySubject = {};
+  for (const g of rows) {
+    (bySubject[g.subject] ||= []).push(g);
+  }
+  const subjects = Object.entries(bySubject);
+  const byTopic = {};
+  for (const g of rows) {
+    const key = g.topic || g.title;
+    (byTopic[key] ||= []).push(g);
+  }
+  const kindLabel = { hausaufgabe: "Hausaufgaben", thema: "Themennoten", manuell: "Manuelle Noten", online_test: "Online-Tests", offline_test: "Offline-Tests" };
   return (
     <>
       <Back to={home} />
-      <h1>Notenbuch</h1>
+      <div className="welcome plain">
+        <h2 style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <GraduationCap size={32} /> Mein Notenbuch
+        </h2>
+        <p>Übersicht über alle deine Noten und Leistungen</p>
+      </div>
+      <div className="tabs" style={{ marginTop: 16 }}>
+        <button type="button" className={tab === "subjects" ? "on" : ""} onClick={() => setTab("subjects")}>
+          Nach Fächern
+        </button>
+        <button type="button" className={tab === "themes" ? "on" : ""} onClick={() => setTab("themes")}>
+          Nach Themen
+        </button>
+      </div>
       {rows.length === 0 ? (
-        <p className="muted" style={{ marginTop: 16 }}>
-          Noch keine Noten vorhanden.
-        </p>
+        <article className="hw">
+          <p className="muted" style={{ textAlign: "center" }}>
+            Noch keine Noten vorhanden
+          </p>
+        </article>
+      ) : tab === "subjects" ? (
+        subjects.map(([fach, notes]) => {
+          const avg = Math.round(notes.reduce((a, g) => a + Number(g.percent || 0), 0) / notes.length);
+          const groups = {};
+          for (const g of notes) (groups[g.kind || "hausaufgabe"] ||= []).push(g);
+          return (
+            <article className="hw" key={fach}>
+              <div className="page-head">
+                <h3>{fach}</h3>
+                <span className="badge">
+                  Ø {avg}% · {notes.length} {notes.length === 1 ? "Note" : "Noten"}
+                </span>
+              </div>
+              {Object.entries(groups).map(([kind, list]) => (
+                <div key={kind} style={{ marginTop: 16 }}>
+                  <h4 className="muted" style={{ textTransform: "uppercase", letterSpacing: "0.04em", fontSize: 12 }}>
+                    {kindLabel[kind] || kind}
+                  </h4>
+                  {list.map((g) => (
+                    <div className="grade-row" key={g.id}>
+                      <div>
+                        <p className="strong">{g.title}</p>
+                        {g.topic ? <p className="muted">{g.topic}</p> : null}
+                        <p className="muted">{formatDE(g.date)}</p>
+                      </div>
+                      <div className="grade-val">
+                        <strong>{g.letter}</strong>
+                        <span>{g.percent}%</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </article>
+          );
+        })
       ) : (
-        <table style={{ marginTop: 16 }}>
-          <thead>
-            <tr>
-              <th>Schüler</th>
-              <th>Fach</th>
-              <th>Titel</th>
-              <th>%</th>
-              <th>Note</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((g) => (
-              <tr key={g.id}>
-                <td>{db.users.find((u) => u.id === g.studentId)?.name}</td>
-                <td>{g.subject}</td>
-                <td>{g.title}</td>
-                <td>{g.percent}</td>
-                <td>{g.letter}</td>
-              </tr>
+        Object.entries(byTopic).map(([topic, list]) => (
+          <article className="hw" key={topic}>
+            <h3>{topic}</h3>
+            {list.map((g) => (
+              <div className="grade-row" key={g.id}>
+                <div>
+                  <p className="strong">{g.title}</p>
+                  <p className="muted">{g.subject}</p>
+                </div>
+                <div className="grade-val">
+                  <strong>{g.letter}</strong>
+                  <span>{g.percent}%</span>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </article>
+        ))
       )}
     </>
   );
@@ -1180,7 +1253,10 @@ function Grades({ user }) {
 function Files({ user }) {
   const db = getDb();
   const [name, setName] = useState("Arbeitsblatt.pdf");
+  const folders = [...new Set(db.files.map((f) => f.folder))];
+  const [folder, setFolder] = useState(folders[0] || "Allgemeine Infos");
   const home = homePath(user);
+  const shown = db.files.filter((f) => f.folder === folder);
   return (
     <>
       <Back to={home} />
@@ -1192,7 +1268,7 @@ function Files({ user }) {
           style={{ margin: "16px 0" }}
           onSubmit={(e) => {
             e.preventDefault();
-            addFile(name, "Unterricht", user.id);
+            addFile(name, folder, user.id);
           }}
         >
           <input value={name} onChange={(e) => setName(e.target.value)} />
@@ -1201,13 +1277,35 @@ function Files({ user }) {
           </button>
         </form>
       ) : null}
-      <ul className="stack">
-        {db.files.map((f) => (
-          <li key={f.id} className="hw">
-            {f.folder} / {f.name}
-          </li>
-        ))}
-      </ul>
+      <div className="hw-split" style={{ marginTop: 16 }}>
+        <aside className="hw-side">
+          <div className="hw-side-h">
+            <h2>
+              <FolderOpen size={18} /> Ordner
+            </h2>
+          </div>
+          <div className="hw-list">
+            {folders.map((f) => (
+              <button key={f} type="button" className={`hw-item ${folder === f ? "on" : ""}`} onClick={() => setFolder(f)}>
+                <strong>{f}</strong>
+                <span>{db.files.filter((x) => x.folder === f).length} Datei(en)</span>
+              </button>
+            ))}
+          </div>
+        </aside>
+        <section>
+          <article className="hw" style={{ marginTop: 0 }}>
+            <h3>{folder}</h3>
+            {shown.length === 0 ? <p className="muted">Keine Dateien in diesem Ordner.</p> : null}
+            {shown.map((f) => (
+              <div className="file-row" key={f.id}>
+                <FileText size={16} />
+                <span>{f.name}</span>
+              </div>
+            ))}
+          </article>
+        </section>
+      </div>
     </>
   );
 }
@@ -1279,21 +1377,34 @@ function Profile({ user }) {
     <>
       <Back to={home} />
       <h1>Mein Profil</h1>
-      <article className="hw" style={{ marginTop: 16 }}>
-        <p>
-          <strong>Name:</strong> {user.name}
-        </p>
-        <p>
-          <strong>E-Mail:</strong> {user.email}
-        </p>
-        <p>
-          <strong>Rolle:</strong> {roleLabel}
-        </p>
-        {user.className ? (
-          <p>
-            <strong>Klasse:</strong> {user.className}
-          </p>
-        ) : null}
+      <article className="hw profile-card" style={{ marginTop: 16 }}>
+        <div className="profile-top">
+          <span className="avatar lg">{initials(user.name)}</span>
+          <div>
+            <h2>{user.name}</h2>
+            <p className="muted">{roleLabel}</p>
+          </div>
+        </div>
+        <dl className="profile-dl">
+          <div>
+            <dt>Name</dt>
+            <dd>{user.name}</dd>
+          </div>
+          <div>
+            <dt>E-Mail</dt>
+            <dd>{user.email}</dd>
+          </div>
+          <div>
+            <dt>Rolle</dt>
+            <dd>{roleLabel}</dd>
+          </div>
+          {user.className ? (
+            <div>
+              <dt>Klasse</dt>
+              <dd>{user.className}</dd>
+            </div>
+          ) : null}
+        </dl>
       </article>
     </>
   );

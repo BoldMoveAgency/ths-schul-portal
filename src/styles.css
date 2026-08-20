@@ -873,3 +873,32 @@ html.dark .badge.st-in, html[data-theme="dark"] .badge.st-in { color: hsl(213 94
 @media (max-width: 1023px) {
   .hw-split { grid-template-columns: 1fr; }
 }
+.avatar.lg { width: 64px; height: 64px; font-size: 22px; }
+.profile-top { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+.profile-top h2 { margin: 0; }
+.profile-dl { display: grid; gap: 0; margin: 0; }
+.profile-dl div { display: grid; grid-template-columns: 140px 1fr; gap: 8px; padding: 10px 0; border-top: 1px solid hsl(var(--border)); }
+.profile-dl dt { color: hsl(var(--muted-foreground)); font-size: 13px; }
+.profile-dl dd { margin: 0; font-weight: 500; }
+.grade-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+.grade-val { text-align: right; }
+.grade-val strong { display: block; font-size: 18px; }
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+.choice:hover { background: hsl(var(--muted) / 0.4); }
