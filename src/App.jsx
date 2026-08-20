@@ -29,6 +29,7 @@ import {
   Calendar,
   CheckCircle2,
   ChevronDown,
+  ChevronRight,
   ClipboardCheck,
   ClipboardList,
   Clock,
@@ -42,7 +43,10 @@ import {
   MessageCircle,
   MessageSquare,
   Moon,
+  Plus,
   ScrollText,
+  Search,
+  Send,
   Sun,
   TriangleAlert,
   Upload,
@@ -51,6 +55,8 @@ import {
   Video,
 } from "lucide-react";
 import {
+  addCourseRoom,
+  addDirectRoom,
   addFile,
   addHomework,
   askQuestion,
@@ -1102,51 +1108,186 @@ function HomeworkStudent({ user }) {
 function Chat({ user }) {
   const db = getDb();
   const rooms = db.rooms.filter((r) => r.members.includes(user.id));
-  const [active, setActive] = useState(rooms[0]?.id);
+  const [active, setActive] = useState(null);
   const [text, setText] = useState("");
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState({ klasse: true, kurs: true, gruppe: true, direkt: true });
+  const [dm, setDm] = useState(false);
+  const [kursName, setKursName] = useState("");
+  const [newKurs, setNewKurs] = useState(false);
   const msgs = db.messages.filter((m) => m.roomId === active);
   useEffect(() => {
     if (active) markRoomRead(user.id, active);
   }, [active, user.id, msgs.length]);
   const name = (id) => db.users.find((u) => u.id === id)?.name || id;
+  const lastOf = (roomId) => db.messages.filter((m) => m.roomId === roomId).at(-1);
+  const unreadOf = (roomId) => {
+    const last = (db.reads[user.id] || {})[roomId] || "";
+    return db.messages.filter((m) => m.roomId === roomId && m.createdAt > last && m.senderId !== user.id).length;
+  };
+  const match = (r) => !q || r.name.toLowerCase().includes(q.toLowerCase());
+  const groups = [
+    ["klasse", "Klassenräume", rooms.filter((r) => r.type === "klasse" && match(r))],
+    ["kurs", "Kursräume", rooms.filter((r) => r.type === "kurs" && match(r))],
+    ["direkt", "Direktnachrichten", rooms.filter((r) => r.type === "direkt" && match(r))],
+  ];
+  const room = rooms.find((r) => r.id === active);
+  const others = db.users.filter((u) => u.id !== user.id && !rooms.some((r) => r.type === "direkt" && r.members.includes(u.id) && r.members.includes(user.id)));
   const home = homePath(user);
   return (
     <>
       <Back to={home} />
-      <h1>Nachrichten</h1>
-      <div className="split" style={{ marginTop: 16 }}>
-        <div className="list">
-          <p className="muted">Klassenräume</p>
-          {rooms.map((r) => (
-            <button key={r.id} type="button" className={r.id === active ? "active" : ""} onClick={() => setActive(r.id)}>
-              {r.name}
-            </button>
-          ))}
-        </div>
-        <div className="thread">
-          {msgs.map((m) => (
-            <div className="msg" key={m.id}>
-              <strong>{name(m.senderId)}</strong>
-              <div>{m.text}</div>
-              <div className="muted">{new Date(m.createdAt).toLocaleString("de-DE")}</div>
-            </div>
-          ))}
-          <form
-            className="composer"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!text.trim() || !active) return;
-              sendMessage(active, user.id, text.trim());
-              setText("");
-            }}
-          >
-            <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Nachricht eingeben…" />
-            <button className="btn" type="submit">
-              Senden
-            </button>
-          </form>
-        </div>
+      <div className="chat-head">
+        <h1>
+          <MessageCircle size={22} /> Nachrichten
+        </h1>
+        <p className="muted">Klassengruppen & Direktnachrichten</p>
       </div>
+      <div className="chat-shell">
+        <aside className="chat-side">
+          <div className="chat-side-h">
+            <div className="row">
+              {user.role === "lehrer" ? (
+                <button className="icon-btn" type="button" title="Neuen Kursraum erstellen" onClick={() => setNewKurs(true)}>
+                  <BookOpen size={16} />
+                </button>
+              ) : null}
+              <button className="icon-btn" type="button" title="Neue Direktnachricht" onClick={() => setDm(true)}>
+                <Plus size={16} />
+              </button>
+            </div>
+            <label className="search">
+              <Search size={14} />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Suchen..." />
+            </label>
+          </div>
+          <div className="chat-rooms">
+            {rooms.length === 0 ? <p className="muted">Keine Chats vorhanden</p> : null}
+            {groups.map(([id, label, list]) =>
+              list.length || id === "kurs" ? (
+                <div key={id} className="chat-sec">
+                  <button type="button" className="sec-h" onClick={() => setOpen((o) => ({ ...o, [id]: !o[id] }))}>
+                    {open[id] ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    {label}
+                  </button>
+                  {open[id]
+                    ? list.map((r) => {
+                        const last = lastOf(r.id);
+                        const n = unreadOf(r.id);
+                        return (
+                          <button key={r.id} type="button" className={`room-item ${active === r.id ? "on" : ""}`} onClick={() => setActive(r.id)}>
+                            <span className="avatar">{initials(r.name)}</span>
+                            <span className="room-meta">
+                              <strong>{r.name}</strong>
+                              <em>{last ? last.text : "Keine Nachrichten"}</em>
+                            </span>
+                            {n ? <span className="badge gold">{n}</span> : null}
+                          </button>
+                        );
+                      })
+                    : null}
+                  {id === "kurs" && open[id] && list.length === 0 ? <p className="muted" style={{ padding: "0 12px" }}>Noch keine Kursräume erstellt</p> : null}
+                </div>
+              ) : null
+            )}
+          </div>
+        </aside>
+        <section className="chat-main">
+          {!active ? (
+            <div className="empty">
+              <MessageCircle size={64} />
+              <p>Wähle einen Chat aus</p>
+              <p className="muted">oder starte eine neue Unterhaltung</p>
+            </div>
+          ) : (
+            <>
+              <div className="chat-main-h">
+                <span className="avatar">{initials(room?.name)}</span>
+                <div>
+                  <strong>{room?.name}</strong>
+                  <p className="muted">{room?.type === "klasse" ? "Klassenraum" : room?.type === "kurs" ? "Kursraum" : "Direktnachricht"}</p>
+                </div>
+              </div>
+              <div className="bubbles">
+                {msgs.map((m) => (
+                  <div key={m.id} className={`bubble ${m.senderId === user.id ? "me" : ""}`}>
+                    {m.senderId !== user.id ? <span className="who">{name(m.senderId)}</span> : null}
+                    <p>{m.text}</p>
+                    <time>{new Date(m.createdAt).toLocaleString("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</time>
+                  </div>
+                ))}
+              </div>
+              <form
+                className="composer"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!text.trim() || !active) return;
+                  sendMessage(active, user.id, text.trim());
+                  setText("");
+                }}
+              >
+                <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Nachricht eingeben…" />
+                <button className="btn" type="submit">
+                  <Send size={16} />
+                </button>
+              </form>
+            </>
+          )}
+        </section>
+      </div>
+      {dm ? (
+        <div className="modal-scrim" onClick={() => setDm(false)}>
+          <article className="hw modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Neue Direktnachricht</h3>
+            {others.length === 0 ? <p className="muted">Keine weiteren Empfänger.</p> : null}
+            {others.map((u) => (
+              <button
+                key={u.id}
+                className="hw-item"
+                type="button"
+                onClick={() => {
+                  setActive(addDirectRoom(user.id, u.id));
+                  setDm(false);
+                }}
+              >
+                <strong>{u.name}</strong>
+                <span>{u.role === "lehrer" ? "Lehrer" : u.role === "eltern" ? "Eltern" : "Schüler"}</span>
+              </button>
+            ))}
+            <button className="btn outline" type="button" onClick={() => setDm(false)}>
+              Abbrechen
+            </button>
+          </article>
+        </div>
+      ) : null}
+      {newKurs ? (
+        <div className="modal-scrim" onClick={() => setNewKurs(false)}>
+          <article className="hw modal-card" onClick={(e) => e.stopPropagation()}>
+            <h3>Neuen Kursraum erstellen</h3>
+            <label className="field">
+              Name
+              <input value={kursName} onChange={(e) => setKursName(e.target.value)} />
+            </label>
+            <div className="row" style={{ marginTop: 12 }}>
+              <button className="btn outline" type="button" onClick={() => setNewKurs(false)}>
+                Abbrechen
+              </button>
+              <button
+                className="btn"
+                type="button"
+                onClick={() => {
+                  if (!kursName.trim()) return;
+                  setActive(addCourseRoom(kursName.trim(), user.id));
+                  setKursName("");
+                  setNewKurs(false);
+                }}
+              >
+                Erstellen
+              </button>
+            </div>
+          </article>
+        </div>
+      ) : null}
     </>
   );
 }
@@ -1317,7 +1458,7 @@ function Notify() {
   return (
     <>
       <Back to="/teacher" />
-      <h1>Nachricht senden</h1>
+      <h1>Nachricht Senden</h1>
       <p className="muted">Benachrichtigungen an Schüler und Eltern senden</p>
       <form
         className="hw"

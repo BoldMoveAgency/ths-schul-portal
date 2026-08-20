@@ -7,11 +7,13 @@ import {
   ClipboardCheck,
   Clock,
   FileText,
+  FileCode,
   FolderOpen,
   Globe,
   GraduationCap,
   HeartPulse,
   MessageCircle,
+  Plus,
   Upload,
   User,
   Users,
@@ -26,6 +28,8 @@ import {
   addReport,
   addScript,
   addTest,
+  deleteScript,
+  updateScript,
   addTopic,
   answerQuestion,
   askQuestion,
@@ -65,39 +69,59 @@ function formatDE(iso) {
 export function HomeworkQuestions({ user }) {
   const db = getDb();
   const [answer, setAnswer] = useState("Ja. Dann bleibt x = ±sqrt(-c/a).");
+  const [sel, setSel] = useState(null);
   const open = db.questions.filter((q) => !q.answer);
   const done = db.questions.filter((q) => q.answer);
+  const q = db.questions.find((x) => x.id === sel) || open[0] || done[0];
   return (
     <>
       <Back to="/teacher" />
       <h1>Offene Hausaufgaben-Fragen</h1>
       <p className="muted">Alle unbeantworteten Schülerfragen im Überblick</p>
-      {open.length === 0 ? <p className="muted">Keine unbeantworteten Schülerfragen.</p> : null}
-      {open.map((q) => {
-        const h = db.homework.find((x) => x.id === q.homeworkId);
-        const s = db.users.find((u) => u.id === q.studentId);
-        return (
-          <article className="hw" key={q.id}>
-            <h3>{h?.title}</h3>
-            <p className="muted">{s?.name}</p>
-            <p>{q.text}</p>
-            <div className="row">
-              <input value={answer} onChange={(e) => setAnswer(e.target.value)} />
-              <button className="btn" type="button" onClick={() => answerQuestion(q.id, answer)}>
-                Antworten
-              </button>
+      <div className="hw-split">
+        <aside className="hw-side">
+          <div className="hw-side-h">
+            <h2>Fragen ({open.length} offen)</h2>
+          </div>
+          <div className="hw-list">
+            {db.questions.length === 0 ? <p className="muted">Keine Schülerfragen.</p> : null}
+            {[...open, ...done].map((row) => {
+              const h = db.homework.find((x) => x.id === row.homeworkId);
+              const s = db.users.find((u) => u.id === row.studentId);
+              return (
+                <button key={row.id} type="button" className={`hw-item ${q?.id === row.id ? "on" : ""}`} onClick={() => setSel(row.id)}>
+                  <strong>{h?.title}</strong>
+                  <span>{s?.name}</span>
+                  <span className="muted">{row.answer ? "Beantwortet" : "Offen"}</span>
+                </button>
+              );
+            })}
+          </div>
+        </aside>
+        <section>
+          {!q ? (
+            <div className="empty">
+              <p>Keine unbeantworteten Schülerfragen.</p>
             </div>
-          </article>
-        );
-      })}
-      {done.map((q) => (
-        <article className="hw" key={q.id}>
-          <p>
-            <strong>Frage:</strong> {q.text}
-          </p>
-          <p className="ok">Antwort: {q.answer}</p>
-        </article>
-      ))}
+          ) : (
+            <article className="hw">
+              <h3>{db.homework.find((x) => x.id === q.homeworkId)?.title}</h3>
+              <p className="muted">{db.users.find((u) => u.id === q.studentId)?.name}</p>
+              <p className="brief">{q.text}</p>
+              {q.answer ? (
+                <p className="ok">Antwort: {q.answer}</p>
+              ) : (
+                <div className="stack" style={{ marginTop: 12 }}>
+                  <textarea value={answer} onChange={(e) => setAnswer(e.target.value)} />
+                  <button className="btn" type="button" onClick={() => answerQuestion(q.id, answer)}>
+                    Antworten
+                  </button>
+                </div>
+              )}
+            </article>
+          )}
+        </section>
+      </div>
     </>
   );
 }
@@ -144,34 +168,82 @@ export function Topics() {
   const db = getDb();
   const [name, setName] = useState("");
   const [subject, setSubject] = useState("Mathematik");
+  const [tab, setTab] = useState("regulaer");
+  const [form, setForm] = useState(false);
   return (
     <>
       <Back to="/teacher" />
-      <h1>Themen-Verwaltung</h1>
-      <form
-        className="hw"
-        onSubmit={(e) => {
-          e.preventDefault();
-          addTopic({ name, subject, quarter: "Q3" });
-          setName("");
-        }}
-      >
-        <div className="row">
-          <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Thema" required />
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Fach" />
-          <button className="btn" type="submit">
-            Anlegen
-          </button>
+      <div className="page-head">
+        <div>
+          <h1>Themen-Verwaltung</h1>
+          <p className="muted">Erstellen und verwalten Sie Lerneinheiten für Ihre Klassen und Wahlfächer</p>
         </div>
-      </form>
-      {db.topics.map((t) => (
-        <article className="hw" key={t.id}>
-          <h3>{t.name}</h3>
-          <p className="muted">
-            {t.subject} · {t.quarter}
-          </p>
-        </article>
-      ))}
+        <button className="btn" type="button" onClick={() => setForm((v) => !v)}>
+          <Plus size={16} /> Neues Thema
+        </button>
+      </div>
+      <div className="tabs">
+        <button type="button" className={tab === "regulaer" ? "on" : ""} onClick={() => setTab("regulaer")}>
+          Reguläres Fach
+        </button>
+        <button type="button" className={tab === "wahlfach" ? "on" : ""} onClick={() => setTab("wahlfach")}>
+          <BookOpen size={14} /> Wahlfach
+        </button>
+      </div>
+      {form ? (
+        <form
+          className="hw"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addTopic({ name, subject: tab === "wahlfach" ? `Wahlfach · ${subject}` : subject, quarter: "Q3" });
+            setName("");
+            setForm(false);
+          }}
+        >
+          <h3>{tab === "wahlfach" ? "Neues Wahlfach-Thema" : "Neues Thema erstellen"}</h3>
+          <div className="stack">
+            <label className="field">
+              Klasse *
+              <input value="Klasse 11 a" readOnly />
+            </label>
+            <label className="field">
+              Fach *
+              <input value={subject} onChange={(e) => setSubject(e.target.value)} required />
+            </label>
+            <label className="field">
+              Thema *
+              <input value={name} onChange={(e) => setName(e.target.value)} required />
+            </label>
+            <button className="btn" type="submit">
+              Speichern
+            </button>
+          </div>
+        </form>
+      ) : null}
+      <div className="table-wrap" style={{ marginTop: 16 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Thema</th>
+              <th>Fach</th>
+              <th>Klasse</th>
+              <th>Quartal</th>
+            </tr>
+          </thead>
+          <tbody>
+            {db.topics
+              .filter((t) => (tab === "wahlfach" ? t.subject.startsWith("Wahlfach") : !t.subject.startsWith("Wahlfach")))
+              .map((t) => (
+                <tr key={t.id}>
+                  <td className="strong">{t.name}</td>
+                  <td>{t.subject}</td>
+                  <td>Klasse 11 a</td>
+                  <td>{t.quarter}</td>
+                </tr>
+              ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
@@ -309,75 +381,236 @@ export function ModulesStudent({ user }) {
 
 export function Scripts() {
   const db = getDb();
-  const [title, setTitle] = useState("Neues Skript");
+  const [edit, setEdit] = useState(null);
+  const [title, setTitle] = useState("");
   const [subject, setSubject] = useState("Mathematik");
+  const [klass, setKlass] = useState("Klasse 11 a");
+  const [body, setBody] = useState("");
+  const [preview, setPreview] = useState(null);
+  function startNew() {
+    setEdit("new");
+    setTitle("");
+    setSubject("Mathematik");
+    setKlass("Klasse 11 a");
+    setBody("");
+  }
+  function openRow(s) {
+    setEdit(s.id);
+    setTitle(s.title);
+    setSubject(s.subject);
+    setKlass(s.className || "Klasse 11 a");
+    setBody(s.body);
+  }
   return (
     <>
       <Back to="/teacher" />
-      <h1>Skript-Generator</h1>
-      <p className="muted">Erzeugt ein Demo-Skript lokal. Kein externes Modell.</p>
-      <form
-        className="hw"
-        onSubmit={(e) => {
-          e.preventDefault();
-          addScript({ title, subject });
-        }}
-      >
-        <div className="row">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required />
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} />
-          <button className="btn" type="submit">
-            Skript erzeugen
+      {edit ? (
+        <>
+          <button className="btn ghost back" type="button" onClick={() => setEdit(null)}>
+            ← Zurück zu Meine Skripte
           </button>
+          <h1>{edit === "new" ? "Neues Skript" : "Skript bearbeiten"}</h1>
+          <form
+            className="hw"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (edit === "new") addScript({ title, subject, className: klass, body });
+              else updateScript(edit, { title, subject, className: klass, body });
+              setEdit(null);
+            }}
+          >
+            <div className="stack">
+              <label className="field">
+                Titel *
+                <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+              </label>
+              <label className="field">
+                Fach *
+                <input value={subject} onChange={(e) => setSubject(e.target.value)} required />
+              </label>
+              <label className="field">
+                Klasse
+                <input value={klass} onChange={(e) => setKlass(e.target.value)} />
+              </label>
+              <label className="field">
+                Inhalt
+                <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={12} />
+              </label>
+              <div className="row">
+                <button className="btn outline" type="button" onClick={() => setEdit(null)}>
+                  Abbrechen
+                </button>
+                {edit !== "new" ? (
+                  <button className="btn outline" type="button" onClick={() => updateScript(edit, { status: "Fertiggestellt" })}>
+                    Als fertig markieren
+                  </button>
+                ) : null}
+                <button className="btn" type="submit">
+                  Speichern
+                </button>
+              </div>
+            </div>
+          </form>
+        </>
+      ) : (
+        <>
+          <p style={{ margin: "8px 0 24px" }}>
+            <button className="btn" type="button" onClick={startNew} style={{ height: 48, padding: "0 20px", fontSize: 16 }}>
+              <Plus size={18} /> Neues Skript erstellen
+            </button>
+          </p>
+          <article className="hw" style={{ marginTop: 0 }}>
+            <h2>
+              <FileCode size={22} /> Meine Skripte
+            </h2>
+            <p className="muted">Alle von Ihnen erstellten Skripte im Überblick</p>
+            {db.scripts.length === 0 ? (
+              <div className="empty">
+                <FileCode size={48} />
+                <p>Sie haben noch keine Skripte erstellt.</p>
+                <p className="muted">Klicken Sie auf „Neues Skript erstellen“, um zu beginnen.</p>
+              </div>
+            ) : (
+              <div className="table-wrap" style={{ marginTop: 16 }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Titel</th>
+                      <th>Fach</th>
+                      <th>Klasse</th>
+                      <th>Letzte Bearbeitung</th>
+                      <th>Status</th>
+                      <th>Aktionen</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {db.scripts.map((s) => (
+                      <tr key={s.id} style={{ cursor: "pointer" }} onClick={() => openRow(s)}>
+                        <td className="strong">{s.title}</td>
+                        <td>{s.subject}</td>
+                        <td>{s.className || "Klasse 11 a"}</td>
+                        <td className="muted">{s.updatedAt ? new Date(s.updatedAt).toLocaleString("de-DE") : "–"}</td>
+                        <td>
+                          <span className={`badge ${s.status === "Fertiggestellt" ? "st-ok" : "st-open"}`}>{s.status || "Entwurf"}</span>
+                        </td>
+                        <td>
+                          <button
+                            className="btn ghost"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setPreview(s);
+                            }}
+                          >
+                            Vorschau
+                          </button>
+                          <button
+                            className="btn ghost"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteScript(s.id);
+                            }}
+                          >
+                            Löschen
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </article>
+        </>
+      )}
+      {preview ? (
+        <div className="modal-scrim" onClick={() => setPreview(null)}>
+          <article className="hw modal-card" style={{ maxWidth: 640 }} onClick={(e) => e.stopPropagation()}>
+            <h3>{preview.title}</h3>
+            <p className="muted">
+              {preview.subject} · {preview.className}
+            </p>
+            <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>{preview.body}</pre>
+            <button className="btn" type="button" onClick={() => setPreview(null)}>
+              Schließen
+            </button>
+          </article>
         </div>
-      </form>
-      {db.scripts.map((s) => (
-        <article className="hw" key={s.id}>
-          <h3>{s.title}</h3>
-          <p className="muted">{s.subject}</p>
-          <pre style={{ whiteSpace: "pre-wrap", fontFamily: "inherit" }}>{s.body}</pre>
-        </article>
-      ))}
+      ) : null}
     </>
   );
 }
 
 export function TestsTeacher() {
   const db = getDb();
-  const [title, setTitle] = useState("Kurztest");
+  const [title, setTitle] = useState("");
+  const [form, setForm] = useState(false);
   return (
     <>
       <Back to="/teacher" />
-      <h1>Test-Generator</h1>
-      <form
-        className="hw"
-        onSubmit={(e) => {
-          e.preventDefault();
-          addTest({
-            title,
-            subject: "Mathematik",
-            questions: [
-              { q: "2 + 2 = ?", options: ["3", "4", "5"], answer: 1 },
-              { q: "Wurzel aus 16?", options: ["2", "4", "8"], answer: 1 },
-            ],
-          });
-        }}
-      >
-        <div className="row">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} required />
-          <button className="btn" type="submit">
-            Test anlegen
-          </button>
+      <div className="page-head">
+        <div>
+          <h1>Test-Generator</h1>
+          <p className="muted">Online-Tests erstellen und automatisch auswerten lassen</p>
         </div>
-      </form>
-      {db.tests.map((t) => (
-        <article className="hw" key={t.id}>
-          <h3>{t.title}</h3>
-          <p className="muted">
-            {t.subject} · {t.questions.length} Fragen · {db.testAttempts.filter((a) => a.testId === t.id).length} Versuche
-          </p>
-        </article>
-      ))}
+        <button className="btn" type="button" onClick={() => setForm((v) => !v)}>
+          <Plus size={16} /> Neuen Test erstellen
+        </button>
+      </div>
+      {form ? (
+        <form
+          className="hw"
+          onSubmit={(e) => {
+            e.preventDefault();
+            addTest({
+              title,
+              subject: "Mathematik",
+              questions: [
+                { q: "2 + 2 = ?", options: ["3", "4", "5"], answer: 1 },
+                { q: "Wurzel aus 16?", options: ["2", "4", "8"], answer: 1 },
+              ],
+            });
+            setTitle("");
+            setForm(false);
+          }}
+        >
+          <label className="field">
+            Titel *
+            <input value={title} onChange={(e) => setTitle(e.target.value)} required />
+          </label>
+          <p className="muted">Demo legt zwei Mathematik-Fragen an.</p>
+          <button className="btn" type="submit">
+            Speichern
+          </button>
+        </form>
+      ) : null}
+      <div className="table-wrap" style={{ marginTop: 16 }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Titel</th>
+              <th>Fach</th>
+              <th>Fragen</th>
+              <th>Versuche</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {db.tests.map((t) => (
+              <tr key={t.id}>
+                <td className="strong">{t.title}</td>
+                <td>{t.subject}</td>
+                <td>{t.questions.length}</td>
+                <td>{db.testAttempts.filter((a) => a.testId === t.id).length}</td>
+                <td>
+                  <span className="badge st-ok">freigegeben</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </>
   );
 }
@@ -639,21 +872,59 @@ export function ReportsStudent({ user }) {
 
 export function AdminTasks() {
   const db = getDb();
+  const [filter, setFilter] = useState("all");
+  const [sel, setSel] = useState(db.adminTasks[0]?.id || null);
+  const list = db.adminTasks.filter((t) => (filter === "all" ? true : t.status === filter));
+  const t = list.find((x) => x.id === sel) || list[0];
   return (
     <>
       <Back to="/teacher" />
       <h1>Verwaltungsaufgaben</h1>
-      {db.adminTasks.map((t) => (
-        <article className="hw" key={t.id}>
-          <h3>
-            {t.title} <span className="badge">{t.status}</span>
-          </h3>
-          <p>{t.body}</p>
-          <button className="btn" type="button" onClick={() => completeAdminTask(t.id)}>
-            {t.status === "offen" ? "Erledigt" : "Wieder öffnen"}
+      <p className="muted">Admin-Aufgaben und Aufgaben-Status verwalten</p>
+      <div className="tabs">
+        {[
+          ["all", "Alle"],
+          ["offen", "Offen"],
+          ["erledigt", "Erledigt"],
+        ].map(([id, label]) => (
+          <button key={id} type="button" className={filter === id ? "on" : ""} onClick={() => setFilter(id)}>
+            {label}
           </button>
-        </article>
-      ))}
+        ))}
+      </div>
+      <div className="hw-split">
+        <aside className="hw-side">
+          <div className="hw-list">
+            {list.length === 0 ? <p className="muted">Keine Aufgaben.</p> : null}
+            {list.map((row) => (
+              <button key={row.id} type="button" className={`hw-item ${t?.id === row.id ? "on" : ""}`} onClick={() => setSel(row.id)}>
+                <strong>{row.title}</strong>
+                <span className={`badge ${row.status === "offen" ? "st-open" : "st-ok"}`}>{row.status}</span>
+              </button>
+            ))}
+          </div>
+        </aside>
+        <section>
+          {!t ? (
+            <div className="empty">
+              <p>Wählen Sie eine Aufgabe aus der Liste aus</p>
+            </div>
+          ) : (
+            <article className="hw">
+              <div className="page-head">
+                <h3>{t.title}</h3>
+                <span className={`badge ${t.status === "offen" ? "st-open" : "st-ok"}`}>{t.status}</span>
+              </div>
+              <p className="brief">{t.body}</p>
+              <p style={{ marginTop: 16 }}>
+                <button className="btn" type="button" onClick={() => completeAdminTask(t.id)}>
+                  {t.status === "offen" ? "Als erledigt markieren" : "Wieder öffnen"}
+                </button>
+              </p>
+            </article>
+          )}
+        </section>
+      </div>
     </>
   );
 }
@@ -667,24 +938,59 @@ export function StudentOverview() {
     <>
       <Back to="/teacher" />
       <h1>Schülerübersicht</h1>
-      <p className="muted">
-        {s?.name} · {s?.className}
-      </p>
-      <h3>Hausaufgaben</h3>
-      {subs.map((sub) => {
-        const h = db.homework.find((x) => x.id === sub.homeworkId);
-        return (
-          <p key={sub.id}>
-            {h?.title}: {sub.status}
-          </p>
-        );
-      })}
-      <h3>Noten</h3>
-      {grades.map((g) => (
-        <p key={g.id}>
-          {g.subject} {g.percent}% ({g.letter})
-        </p>
-      ))}
+      <p className="muted">Alle Aufgaben eines Schülers übersichtlich anzeigen</p>
+      <article className="hw">
+        <div className="profile-top">
+          <span className="avatar lg">{(s?.name || "S").split(" ").map((p) => p[0]).join("")}</span>
+          <div>
+            <h2>{s?.name}</h2>
+            <p className="muted">{s?.className}</p>
+          </div>
+        </div>
+      </article>
+      <article className="hw">
+        <h3>Hausaufgaben</h3>
+        <div className="table-wrap" style={{ marginTop: 12 }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Titel</th>
+                <th>Status</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {subs.map((sub) => {
+                const h = db.homework.find((x) => x.id === sub.homeworkId);
+                return (
+                  <tr key={sub.id}>
+                    <td>{h?.title}</td>
+                    <td>
+                      <span className={`badge ${sub.status === "Offen" ? "st-open" : "st-in"}`}>{sub.status}</span>
+                    </td>
+                    <td>{sub.grade != null ? `${sub.grade}%` : "–"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </article>
+      <article className="hw">
+        <h3>Noten</h3>
+        {grades.map((g) => (
+          <div className="grade-row" key={g.id}>
+            <div>
+              <p className="strong">{g.title}</p>
+              <p className="muted">{g.subject}</p>
+            </div>
+            <div className="grade-val">
+              <strong>{g.letter}</strong>
+              <span>{g.percent}%</span>
+            </div>
+          </div>
+        ))}
+      </article>
     </>
   );
 }

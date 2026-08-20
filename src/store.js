@@ -1,6 +1,6 @@
 import { supabase } from "./supabase.js";
 
-const KEY = "ths-demo-v3";
+const KEY = "ths-demo-v4";
 const CLOUD_ID = "v1";
 
 const now = () => new Date().toISOString();
@@ -33,7 +33,9 @@ const seed = {
   ],
   rooms: [
     { id: "r-k11", type: "klasse", name: "Klasse 11", members: ["t1", "s1", "p1"] },
-    { id: "r-dm", type: "direkt", name: "Ezra Schiesl · Noah Keller", members: ["t1", "s1", "p1"] },
+    { id: "r-kurs", type: "kurs", name: "Mathe Q3", members: ["t1", "s1"] },
+    { id: "r-dm", type: "direkt", name: "Noah Keller", members: ["t1", "s1"] },
+    { id: "r-dm-p", type: "direkt", name: "Lea Keller", members: ["t1", "p1"] },
   ],
   messages: [
     {
@@ -111,6 +113,9 @@ const seed = {
       id: "sc1",
       title: "Einführung quadratische Gleichungen",
       subject: "Mathematik",
+      className: "Klasse 11 a",
+      status: "Fertiggestellt",
+      updatedAt: "2026-08-18T10:00:00.000Z",
       body: "1. Wiederholung lineare Gleichungen\n2. Die Normalform ax² + bx + c = 0\n3. Mitternachtsformel mit drei Beispielen\n4. Übungsblatt",
     },
   ],
@@ -278,6 +283,26 @@ export function sendMessage(roomId, senderId, text) {
   save(db);
 }
 
+export function addDirectRoom(userId, otherId) {
+  const db = load();
+  const existing = db.rooms.find((r) => r.type === "direkt" && r.members.includes(userId) && r.members.includes(otherId));
+  if (existing) return existing.id;
+  const other = db.users.find((u) => u.id === otherId);
+  const id = crypto.randomUUID();
+  db.rooms.push({ id, type: "direkt", name: other?.name || "Direkt", members: [userId, otherId] });
+  save(db);
+  return id;
+}
+
+export function addCourseRoom(name, userId) {
+  const db = load();
+  const id = crypto.randomUUID();
+  const members = db.users.filter((u) => u.role !== "eltern").map((u) => u.id);
+  db.rooms.push({ id, type: "kurs", name, members: members.includes(userId) ? members : [userId, ...members] });
+  save(db);
+  return id;
+}
+
 export function addHomework({ title, subject, due, text, createdBy }) {
   const db = load();
   const id = crypto.randomUUID();
@@ -380,14 +405,33 @@ export function submitModuleTask(id) {
   save(db);
 }
 
-export function addScript({ title, subject }) {
+export function addScript({ title, subject, className, body }) {
   const db = load();
-  db.scripts.push({
-    id: crypto.randomUUID(),
+  const id = crypto.randomUUID();
+  db.scripts.unshift({
+    id,
     title,
     subject,
-    body: `Skript: ${title}\nFach: ${subject}\n\n1. Lernziel\n2. Erklärung\n3. Beispiel\n4. Übung\n5. Transferaufgabe`,
+    className: className || "Klasse 11 a",
+    status: "Entwurf",
+    updatedAt: now(),
+    body: body || `Skript: ${title}\nFach: ${subject}\n\n1. Lernziel\n2. Erklärung\n3. Beispiel\n4. Übung\n5. Transferaufgabe`,
   });
+  save(db);
+  return id;
+}
+
+export function updateScript(id, patch) {
+  const db = load();
+  const row = db.scripts.find((s) => s.id === id);
+  if (!row) return;
+  Object.assign(row, patch, { updatedAt: now() });
+  save(db);
+}
+
+export function deleteScript(id) {
+  const db = load();
+  db.scripts = db.scripts.filter((s) => s.id !== id);
   save(db);
 }
 
